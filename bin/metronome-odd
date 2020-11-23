@@ -1,0 +1,406 @@
+#!/usr/bin/env ruby
+
+require 'metronome-odd'
+
+ParseLine::Line.add_command(:play, /^play$/)
+ParseLine::Line.add_command(:loop, /^loop$/)
+ParseLine::Line.add_command(:loop_speed_up, /^loop:(?<first>\d+),(?<second>\d+)\((?<times>\d+)\)$/)
+ParseLine::Line.add_command(:print_tempo, /^tempo$/)
+ParseLine::Line.add_command(:next_tempo, /^next_tempo:(?<tempo>\d+)$/)
+ParseLine::Line.add_command(:next_tempo_short, /^nt:(?<tempo>\d+)$/)
+ParseLine::Line.add_command(:force_tempo, /^force_tempo:(?<tempo>\d+)$/)
+ParseLine::Line.add_command(:force_tempo_short, /^ft:(?<tempo>\d+)$/)
+ParseLine::Line.add_command(:signature, /^sign:(?<n>\d+)x(?<d>2|4|8|16)$/)
+ParseLine::Line.add_command(:odd_signature, /^sign:(?<beats>(\d\.\d)(,(\d\.\d))*)$/)
+ParseLine::Line.add_command(:add_bar, /^add:(\((?<tempo>\d+)\))?(?<n>\d+)x(?<d>2|4|8|16)(\((?<times>\d+)\))?$/)
+ParseLine::Line.add_command(:odd_bar, /^add:(\((?<tempo>\d+)\))?(?<beats>(\d\.\d)(,(\d\.\d))*)(\((?<times>\d+)\))?$/)
+ParseLine::Line.add_command(:add_1, /^add$/)
+ParseLine::Line.add_command(:add, /^add:(?<times>\d+)$/)
+ParseLine::Line.add_command(:save, /^save:(?<practice>\w+)?$/)
+ParseLine::Line.add_command(:load, /^load:(?<practice>\w+)?$/)
+ParseLine::Line.add_command(:list, /^list$/)
+ParseLine::Line.add_command(:reset, /^reset$/)
+ParseLine::Line.add_command(:help, /^help$/)
+ParseLine::Line.add_command(:help_command, /^help:(?<command>\w+)$/)
+ParseLine::Line.add_command(:print, /^print$/)
+ParseLine::Line.add_command(:quit, /^quit$/)
+ParseLine::Line.add_command(:empty, /^$/)
+
+ParseLine::Line.add_command(:example, /^example$/)
+
+
+puts
+puts "Welcome to the Programmable Metronome, by Billy Regodón"
+
+def help
+  puts
+  puts "Use the following syntax: add:(t)nxd(T), to add a nxd bar of tempo t, T times"
+  puts "e.g.: add:(100)4x4(8) adds 8 bars of 4x4 with tempo 100"
+  puts
+  puts """Type
+    \"play\" to play the programmed bars
+    \"loop\" to play them repeatedly, press \'crtl\'+C to stop
+    \"loop:xf(N)\" to play the practice session repeatedly, speeding up xf in N repetitions
+    \"loop:t1,t2(N)\" to play the practice session, changing tempo from t1 to t2 in N repetitions
+    \"next_tempo:t\" to set the tempo of the next added bar, in beats per minute or bpm
+      you may use \"nt\" instead of \"next_tempo:t\"
+    \"force_tempo:t\" to change the tempo of the current practice session
+      you may use \"ft\" instead of \"force_tempo:t\"
+    \"sign:nxd\" to set a standard time signature, with a multiple of 2, up to 16
+    \"sign:f,f,f...\" to set an arbitrary odd bar, with f the duration of the beats
+    \"add:nxd\" to add a standard time signature with the set tempo
+    \"add:f,f,f...\" to add an arbitrary odd bar with the set tempo
+    \"add:(t)nxd(N)\" to add N bars of a standard time signature with tempo t (t and N optional)
+    \"add:(t)f,f,f...(N)\" to add N bars of an arbitrary odd bar with tempo t (t and N optional)
+    \"add\" to add one bar of the previously set type
+    \"add:N\" to add N bars of the previously set type
+    \"load:practice\" to load a previously saved practice session
+    \"save:practice\" to save the current practice session
+    \"list\" to list the available saved practice sessions
+    \"reset\" to reset to default and dismiss current practice session
+    \"help\" to print this help
+    \"help:command\" to print the help for another command
+    \"quit\" to exit"""
+  puts """\nIt is recommended that your create a practice folder to save your practice sessions
+ and that you run \"metronome-odd\" in that folder."""
+  puts """\nType \"example\" to print some example commands."""
+  puts
+end
+
+def help_command(command)
+  puts
+  puts "Type"
+  case command
+  when "play"
+    puts "   \"play\" to play the programmed bars"
+  when "loop"
+    puts """   \"loop\" to play the programmed bars repeatedly, press \'crtl\'+C to stop
+    \"loop:xf(N)\" to play the practice session repeatedly, speeding xf in N repetitions
+    \"loop:t(N)\" to play the practice session repeatedly, changing tempo to t in N repetitions"""
+  when "tempo"
+    puts "   \"tempo:t\" to set the tempo of the next added bar, in beats per minute or bpm"
+  when "force_tempo"
+    puts "   \"force_tempo:t\" to change the tempo of the current practice session"
+  when "sign"
+    puts """    \"sign:nxd\" to set a standard time signature, with a multiple of 2, up to 16
+    \"sign:f,f,f...\" to set an arbitrary odd bar, with f the duration of the beats"""
+  when "add"
+    puts """    \"add:nxd\" to add a standard time signature with the set tempo
+    \"add:f,f,f...\" to add an arbitrary odd bar with the set tempo
+    \"add:(t)nxd(N)\" to add N bars of a standard time signature with tempo t (t and N optional)
+    \"add:(t)f,f,f...(N)\" to add N bars of an arbitrary odd bar with tempo t (t and N optional)
+    \"add\" to add one bar of the previously set type
+    \"add:N\" to add N bars of the previously set type"""
+  when "print"
+    puts "    \"print\" prints the current practice session on the screen"
+  when "help"
+    puts """    \"help\" to print this help
+    \"help:command\" to print the help for another command"""
+  when "quit"
+    puts "    \"quit\" to exit"
+  else
+    puts "    Unknown command"
+  end
+  puts
+end
+
+def help_uninitialized
+  puts
+  puts "    The practice session has not been initialized"
+end
+
+def help_example
+  puts """\nType:
+    \"add\" to add a default 4x4 bar
+    \"play\" to play it
+    \"loop\" to play it repeatedly until you press \'crtl\'+C
+    \"add:3x4\" to add a 3x4 bar after the previous one
+    \"loop\" to play them in loop
+    \"print\" to print the session on the screen without playing it
+    \"reset\" to go back to default empty session
+    \"play\" or \"loop\" to verify that we have an empty session
+    \"add:1.0,1.0,0.5,1.5,0.5(3)\" to add three non-standard 9x8 bars
+    \"add:4x4\" to add a standard 4x4 after them
+    \"play\" to play the practice session
+    \"print\" to print the session on the screen without playing it
+    \"tempo\" to check that the tempo is 100
+    \"force_tempo:150\" or \"ft:150\" to change the tempo of the session to 150
+    \"play\" to play the practice session
+    \"reset\" to go back to default empty session
+    \"add\" to add a default 4x4 bar at the default 100 tempo
+    \"next_tempo:150\" or \"nt:150\" to set the tempo for the next bar
+    \"add\" to add a default 4x4 bar at 150 tempo
+    \"loop\" to play them repeatedly until you press \'crtl\'+C"
+  puts
+
+end
+
+help
+
+def reset
+  metronome = Metronome::Practice.new
+  metronome.push(Metronome::Silence.new(0.01))
+  tempo = 100
+  n = 4
+  d = 4
+  times = 1
+  beats = [1.0, 1.0, 1.0, 1.0]
+  prev_bar = :bar
+  non_initialized = true
+  [metronome, tempo, n, d, times, beats, prev_bar, non_initialized]
+end
+
+metronome, tempo, n, d, times, beats, prev_bar, non_initialized = reset
+
+loop do
+  print(">>>")
+  line = ParseLine::Line.new($stdin.gets.chomp)
+  symbol, match = line.parse
+
+  case symbol
+  when :quit
+    break
+  
+
+  when :play
+    unless non_initialized
+      metronome.play
+      puts
+    else
+      puts help_uninitialized
+    end
+
+
+  when :loop
+    unless non_initialized
+      puts "\nPlaying loop, press \'crtl\'+C to stop\n"
+      loop do
+        if metronome.loop_stop?
+          break
+        end
+      end
+      puts
+    else
+      puts help_uninitialized
+    end
+
+
+  when :loop_speed_up
+    unless non_initialized
+      puts "\nPlaying loop, press \'crtl\'+C to stop\n"
+      first_tempo = Float(match[:first])
+      second_tempo = Float(match[:second])
+      tempo = first_tempo
+      tempo_inc = second_tempo - first_tempo
+      times = Integer(match[:times])
+
+      if tempo_inc < 0.0
+        first_tempo, second_tempo = second_tempo, first_tempo
+        tempo_inc *= -1
+      end
+
+      inc = tempo_inc/times
+      loop do
+        if (second_tempo > first_tempo) && (second_tempo > tempo)
+          metronome.force_tempo(Integer(tempo))
+          tempo += inc
+        end
+        if metronome.loop_stop?
+          break
+        end
+      end
+
+      puts
+    else
+      puts help_uninitialized
+    end
+
+
+  when :print_tempo
+    puts "\n   Set tempo is #{tempo}"
+    puts
+
+
+  when :next_tempo, :next_tempo_short
+    tempo = Integer(match[:tempo])
+  
+
+  when :force_tempo, :force_tempo_short
+    metronome.force_tempo(Float(match[:tempo]))
+
+
+  when :signature
+    n = Integer(match[:n])
+    d = Integer(match[:d])
+    prev_bar = :bar
+  
+
+  when :odd_signature
+    beats = []
+    match[:beats].split(',').each do |d| beats << d.to_f end
+
+    prev_bar = :odd_bar
+
+
+  when :add_bar
+    tempo = match[:tempo] ? Integer(match[:tempo]) : tempo
+    n = Integer(match[:n])
+    d = Integer(match[:d])
+    times = match[:times] ? Integer(match[:times]) : 1
+
+    (1..times).each do
+      metronome.push(Metronome::Bar.new(tempo, n, d))
+    end
+    prev_bar = :bar
+    non_initialized = false
+
+
+  when :odd_bar
+    tempo = match[:tempo] ? Integer(match[:tempo]) : tempo
+    times = match[:times] ? Integer(match[:times]) : 1
+    beats = []
+    match[:beats].split(',').each do |d| beats << d.to_f end
+
+    (1..times).each do
+      metronome.push(Metronome::OddBar.new(tempo, beats))
+    end
+    prev_bar = :odd_bar
+    non_initialized = false
+  
+
+  when :add_1
+    if prev_bar == :bar
+      metronome.push(Metronome::Bar.new(tempo, n, d))
+    elsif prev_bar == :odd_bar
+      metronome.push(Metronome::OddBar.new(tempo, beats))
+    else
+      puts 181283
+      return -1
+    end
+    non_initialized = false
+  
+
+  when :add
+    times = Integer(match[:times])
+    (1..times).each do
+      if prev_bar == :bar
+        metronome.push(Metronome::Bar.new(tempo, n, d))
+      elsif prev_bar == :odd_bar
+        metronome.push(Metronome::OddBar.new(tempo, beats))
+      else
+        puts 181743
+        return -1
+      end
+    end
+    non_initialized = false
+
+
+  when :print
+    unless non_initialized
+      metronome.print_practice
+      puts
+    else
+      puts help_uninitialized
+    end
+
+
+  when :save
+    practice_name = match[:practice]
+
+    if metronome.length > 1
+      if Save.save_exist?(practice_name)
+        puts "\n\"#{practice_name}\" has been already used, press \"o\" to overwrite"
+        if Keypress.read_char == "o"
+          puts "\b\n    Overwriting..."
+        else
+          practice_name = :no_overwrite
+          puts "\b\n    Cancelling..."
+        end
+      else
+        puts "\n    Saving..."
+      end
+      unless practice_name == :no_overwrite
+        save_obj = Array.new
+        save_obj << metronome
+        save_obj << tempo
+        save_obj << n
+        save_obj << d
+        save_obj << times
+        save_obj << beats
+        save_obj << prev_bar
+        save_obj << non_initialized
+        if Save.save_obj(practice_name, save_obj) == 0
+          puts "    #{practice_name} successfully saved."
+        else
+          puts "    Could no save #{practice_name}"
+        end
+      end
+    else
+      puts "\n    There is no practice session to save."
+    end
+    puts
+
+
+  when :load
+    practice_name = match[:practice]
+
+    if Save.save_exist?(practice_name)
+      if metronome.length > 1
+        puts "\n    Are you sure to load a new practice session? Press \"y\" to continue."
+        unless Keypress.read_char == "y"
+          practice_name = :no_overload
+          puts "\b    Cancelling..."
+        end
+      else
+        puts
+      end
+      unless practice_name == :no_overload
+        puts "    Loading #{practice_name}..."
+        metronome, tempo, n, d, times, beats, prev_bar, non_initialized = Save.load_obj(practice_name)
+      end
+    else
+      puts "\n    File not found"
+    end
+    puts
+
+
+  when :list
+    puts "\nAvailable practice sessions:"
+    Save.list.each do |n|
+      puts "    #{n}"
+    end
+    puts
+
+
+  when :reset
+    puts "\nAre you sure to continue? Press \"y\" to confirm"
+    if Keypress.read_char == "y"
+      puts "\n    Resetting..."
+      metronome, tempo, n, d, times, beats, prev_bar, non_initialized = reset
+    end
+    puts
+
+
+  when :help
+    help
+
+
+  when :empty
+
+
+  when :help_command
+    help_command(match[:command])
+
+
+  when :example
+    help_example
+
+
+  else
+    puts
+    puts "    Unknown command"
+    puts
+  end
+end
+
+puts "Leaving..."
