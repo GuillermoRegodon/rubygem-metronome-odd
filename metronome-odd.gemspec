@@ -4,12 +4,12 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = "metronome-odd"
-  spec.version       = '0.0.1'
+  spec.version       = '1.0'
   spec.authors       = ["Guillermo Regodón"]
   spec.email         = ["guillermoregodon@gmail.com"]
   spec.summary       = %q{Programmable metronome}
   spec.description   = %q{Metronome that can be programmed to change de tempo or the time signature.}
-  spec.homepage      = "http://domainforproject.com/"
+  spec.homepage      = "https://github.com/GuillermoRegodon/rubygem-metronome-odd"
   spec.license       = "MIT"
 
   spec.files         = ['lib/metronome-odd.rb',
