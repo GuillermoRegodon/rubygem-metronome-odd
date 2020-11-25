@@ -17,6 +17,7 @@ Gem::Specification.new do |spec|
                         'lib/metronome-odd/save.rb',
                         'lib/metronome-odd/keypress.rb',
                         'lib/metronome-odd/interruptible_sleep.rb',
+                        'lib/metronome-odd/os.rb',
                         'data/metronome-odd/beat_upbeat.aiff',
                         'data/metronome-odd/beat_downbeat.aiff']
   spec.executables   = ['metronome-odd']

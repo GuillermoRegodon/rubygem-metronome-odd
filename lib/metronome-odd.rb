@@ -2,11 +2,13 @@ require 'metronome-odd/interruptible_sleep'
 require 'metronome-odd/parse_line.rb'
 require 'metronome-odd/save.rb'
 require 'metronome-odd/keypress.rb'
+require 'metronome-odd/os.rb'
 
 
 module Metronome
   class Sound
     def initialize(sound_file)
+      @@OS = os
       @sound_file = sound_file
       self
     end
@@ -16,7 +18,19 @@ module Metronome
     end
 
     def play
-      spawn("afplay #{@sound_file}")
+      case @@OS
+      when :macosx, :linux, :unix
+        spawn("afplay #{@sound_file}")
+      when :windows
+        if @sound_file.include?("beat_upbeat")
+          f = 2000
+        elsif @sound_file.include?("beat_downbeat")
+          f = 1000
+        else
+          f = 440
+        end
+        spawn("beep(#{f},75")
+      end
     end
 
     def set_sound(sound_file)
