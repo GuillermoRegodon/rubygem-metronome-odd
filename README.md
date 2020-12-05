@@ -3,13 +3,15 @@
 
 It includes an executable, metronome-odd, to practice and save practice sessions.
 
-The prompt input is intended to be improved. I have used Terminal system call "afplay", therefore I may suppose that in wont work in Windows o Linux (yet)
+The prompt input is intended to be improved. I have used Terminal system call "afplay" for :macosx, :linux and :unix. I have used "beep" for :windows, although I have not tested it yet
 
 I have developed too helper libraries, Save and Parse_Line, adapted from another rubygem to be published. I have also used some content from:
 
 *InterruptibleSleep by @ileitch: https://gist.github.com/ileitch/1459987
 
 *KeyPress by @acook: https://gist.github.com/acook/4190379
+
+*os.rb from StackExchange: https://stackoverflow.com/questions/11784109/detecting-operating-systems-in-ruby
 
 Examples of usage, after typing metronome-odd, in the >>> prompt type
 ```
